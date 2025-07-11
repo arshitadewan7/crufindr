@@ -31,14 +31,16 @@
         </div>
 
         <div>
-          <label class="block mb-1 font-medium">Bio</label>
-          <textarea
+        <label class="block mb-1 font-medium">Bio</label>
+        <textarea
             v-model="form.bio"
             rows="4"
             class="w-full border border-gray-300 p-2 rounded"
             placeholder="A short summary about you"
-          ></textarea>
+        ></textarea>
+        <p v-if="generating" class="text-sm text-indigo-500 mt-1">Generating bio...</p>
         </div>
+
 
         <button
           type="submit"
@@ -52,11 +54,12 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { supabase } from '../services/supabase'
 
 const router = useRouter()
+
 const form = ref({
   name: '',
   role: '',
@@ -64,16 +67,42 @@ const form = ref({
   bio: ''
 })
 
+const generating = ref(false)
+
+// Auto-generate bio when name, role, or skills change
+watch(
+  () => [form.value.name, form.value.role, form.value.skills],
+  async ([name, role, skills]) => {
+    if (name && role && skills) {
+      generating.value = true
+      try {
+        const response = await fetch('http://localhost:3000/api/generate-bio', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, role, skills })
+        })
+        const result = await response.json()
+        form.value.bio = result.bio || ''
+      } catch (err) {
+        console.error('Bio generation error:', err)
+      } finally {
+        generating.value = false
+      }
+    }
+  }
+)
+
 const handleSubmit = async () => {
   const { data: userData } = await supabase.auth.getUser()
-  const user = userData.user
+  const user = userData?.user
+  if (!user) return
 
   const { error } = await supabase.from('profiles').upsert({
     id: user.id,
     name: form.value.name,
     role: form.value.role,
     skills: form.value.skills,
-    bio: form.value.bio,
+    bio: form.value.bio
   })
 
   if (error) {

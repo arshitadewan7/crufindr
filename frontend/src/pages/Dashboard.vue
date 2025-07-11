@@ -11,14 +11,34 @@
       </button>
     </header>
 
-    <!-- Content -->
+    <!-- Main Content -->
     <main class="p-6">
       <h2 class="text-2xl font-semibold mb-6">Welcome to your dashboard 👋</h2>
 
+      <!-- Filters -->
+      <div class="flex flex-col md:flex-row gap-4 mb-6">
+        <!-- Role Filter -->
+        <select v-model="filters.role" class="border p-2 rounded w-full md:w-1/3">
+          <option value="">All Roles</option>
+          <option>Founder</option>
+          <option>Engineer</option>
+          <option>Designer</option>
+          <option>Product Manager</option>
+        </select>
+
+        <!-- Skills Search -->
+        <input
+          v-model="filters.skills"
+          type="text"
+          placeholder="Search by skill (e.g. React)"
+          class="border p-2 rounded w-full md:w-2/3"
+        />
+      </div>
+
       <!-- Cofounder Cards -->
-      <div v-if="users.length" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div v-if="filteredUsers.length" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <div
-          v-for="user in users"
+          v-for="user in filteredUsers"
           :key="user.id"
           class="bg-white p-5 rounded shadow hover:shadow-md transition"
         >
@@ -30,19 +50,23 @@
       </div>
 
       <div v-else class="text-gray-600 mt-10">
-        <p>Looking for cofounders near you...</p>
+        <p>No matching cofounders found...</p>
       </div>
     </main>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { supabase } from '../services/supabase'
 
 const router = useRouter()
-const users = ref([])
+const allUsers = ref([])
+const filters = ref({
+  role: '',
+  skills: ''
+})
 
 const handleLogout = async () => {
   await supabase.auth.signOut()
@@ -61,7 +85,18 @@ onMounted(async () => {
   if (error) {
     console.error('Error fetching profiles:', error)
   } else {
-    users.value = data
+    allUsers.value = data
   }
+})
+
+// Computed filtered users
+const filteredUsers = computed(() => {
+  return allUsers.value.filter((user) => {
+    const roleMatch = !filters.value.role || user.role === filters.value.role
+    const skillMatch =
+      !filters.value.skills ||
+      user.skills?.toLowerCase().includes(filters.value.skills.toLowerCase())
+    return roleMatch && skillMatch
+  })
 })
 </script>
