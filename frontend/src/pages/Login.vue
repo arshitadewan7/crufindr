@@ -21,13 +21,25 @@
 
 <script setup>
 import { ref } from 'vue'
-import { supabase } from '../services/supabase'
+import { useRouter } from 'vue-router'
+import { supabase } from '@/supabase'
 
 const email = ref('')
-const message = ref('')
+const router = useRouter()
 
-const signIn = async () => {
-  const { error } = await supabase.auth.signInWithOtp({ email: email.value })
-  message.value = error ? error.message : 'Check your email for a magic link'
+const handleLogin = async () => {
+  const { error } = await supabase.auth.signInWithOtp({
+    email: email.value,
+    options: {
+      emailRedirectTo: window.location.origin
+    }
+  })
+
+  if (error) {
+    alert('Error sending magic link: ' + error.message)
+  } else {
+    alert('Check your email for the magic link!')
+  }
 }
 </script>
+
