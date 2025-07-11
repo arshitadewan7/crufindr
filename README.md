@@ -17,5 +17,5 @@ Find your perfect cofounder. Crufindr is a full-stack platform to match aspiring
 Coming soon...
 
 ## Author
-[@yourname](https://github.com/yourprofile)
+[@arshita dewan](https://github.com/arshitadewan7)
 
