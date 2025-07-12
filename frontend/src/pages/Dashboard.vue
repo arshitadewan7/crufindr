@@ -15,8 +15,20 @@
     <main class="p-6">
       <h2 class="text-2xl font-semibold mb-6">Welcome to your dashboard 👋</h2>
 
+      <!-- Top Matches -->
+      <div class="mt-10">
+        <h3 class="text-xl font-semibold mb-4 text-indigo-600">Top Matches</h3>
+        <p v-if="loadingMatches">Loading matches...</p>
+        <pre
+          v-else
+          class="bg-gray-100 p-4 rounded whitespace-pre-wrap text-sm text-gray-800"
+        >
+{{ topMatches }}
+        </pre>
+      </div>
+
       <!-- Filters -->
-      <div class="flex flex-col md:flex-row gap-4 mb-6">
+      <div class="flex flex-col md:flex-row gap-4 mb-6 mt-10">
         <!-- Role Filter -->
         <select v-model="filters.role" class="border p-2 rounded w-full md:w-1/3">
           <option value="">All Roles</option>
@@ -36,7 +48,10 @@
       </div>
 
       <!-- Cofounder Cards -->
-      <div v-if="filteredUsers.length" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div
+        v-if="filteredUsers.length"
+        class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+      >
         <div
           v-for="user in filteredUsers"
           :key="user.id"
@@ -62,11 +77,14 @@ import { useRouter } from 'vue-router'
 import { supabase } from '../services/supabase'
 
 const router = useRouter()
+
 const allUsers = ref([])
 const filters = ref({
   role: '',
   skills: ''
 })
+const topMatches = ref('')
+const loadingMatches = ref(false)
 
 const handleLogout = async () => {
   await supabase.auth.signOut()
@@ -77,19 +95,39 @@ onMounted(async () => {
   const { data: authData } = await supabase.auth.getUser()
   const currentUserId = authData?.user?.id
 
-  const { data, error } = await supabase
+  const { data: profiles, error } = await supabase
     .from('profiles')
     .select('*')
-    .neq('id', currentUserId)
 
   if (error) {
     console.error('Error fetching profiles:', error)
-  } else {
-    allUsers.value = data
+    return
   }
+
+  const currentUser = profiles.find(u => u.id === currentUserId)
+  const otherUsers = profiles.filter(u => u.id !== currentUserId)
+  allUsers.value = otherUsers
+
+  await getTopMatches(currentUser, otherUsers)
 })
 
-// Computed filtered users
+const getTopMatches = async (currentUser, otherUsers) => {
+  loadingMatches.value = true
+  try {
+    const res = await fetch('http://localhost:3000/api/match-cofounders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ currentUser, otherUsers })
+    })
+    const result = await res.json()
+    topMatches.value = result.matches
+  } catch (err) {
+    console.error('Failed to fetch matches:', err)
+  } finally {
+    loadingMatches.value = false
+  }
+}
+
 const filteredUsers = computed(() => {
   return allUsers.value.filter((user) => {
     const roleMatch = !filters.value.role || user.role === filters.value.role
