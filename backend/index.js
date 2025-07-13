@@ -1,17 +1,30 @@
-// backend/index.js
 import express from 'express'
 import cors from 'cors'
 import dotenv from 'dotenv'
 import { OpenAI } from 'openai'
+import { createClient } from '@supabase/supabase-js'
 
 dotenv.config()
 
+// ✅ Supabase client
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY)
+
 const app = express()
-app.use(cors())
+
+// ✅ CORS Setup
+app.use(cors({
+  origin: 'https://refactored-engine-v6ppjpgp9gw43qx5-5173.app.github.dev',
+  credentials: true,
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}))
+
 app.use(express.json())
 
+// ✅ OpenAI Setup
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
+// ✅ Endpoint: Auto-generate bio
 app.post('/api/generate-bio', async (req, res) => {
   const { name, role, skills } = req.body
 
@@ -34,6 +47,7 @@ app.post('/api/generate-bio', async (req, res) => {
   }
 })
 
+// ✅ Endpoint: AI Match Cofounders
 app.post('/api/match-cofounders', async (req, res) => {
   const { currentUser, otherUsers } = req.body;
 
@@ -61,10 +75,33 @@ ${otherUsers.map((u, i) => `${i + 1}. ${u.name} (${u.role}) - Skills: ${u.skills
     res.json({ matches });
   } catch (err) {
     console.error('Error in /api/match-cofounders:', err);
-    res.status(500).json({ error: 'Matching failed' });
+    res.status(500).json({ error: 'Matching failed' })
   }
-});
+})
 
+// ✅ Endpoint: Save matches in Supabase
+app.post('/api/save-matches', async (req, res) => {
+  const { userId, matches } = req.body
+
+  try {
+    const { error } = await supabase.from('matches').upsert({
+      user_id: userId,
+      matches,
+    })
+
+    if (error) {
+      console.error('Error saving matches:', error)
+      return res.status(500).json({ error: 'Failed to save matches' })
+    }
+
+    res.json({ success: true })
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Unexpected error saving matches' })
+  }
+})
+
+// ✅ Start server
 app.listen(3000, () => {
-  console.log('Backend running on http://localhost:3000')
+  console.log('✅ Backend running on http://localhost:3000')
 })
