@@ -5,6 +5,7 @@ import Dashboard from '../pages/Dashboard.vue'
 import Profile from '../pages/Profile.vue'
 import Onboarding from '../pages/Onboarding.vue'
 import { supabase } from '../services/supabase'
+import { MotionPlugin } from '@motionone/vue'
 
 const routes = [
   { path: '/', redirect: '/register' },
@@ -30,3 +31,5 @@ router.beforeEach(async (to, from, next) => {
   }
   next()
 })
+
+app.use(MotionPlugin)
